@@ -1,4 +1,3 @@
-<!-- components/PomegranateParticles.vue -->
 <template>
   <div ref="canvasContainer" class="canvas-container">
     <canvas ref="canvas"></canvas>
@@ -15,6 +14,16 @@
   const cursor = ref({ x: 9999, y: 9999 });
   let animationFrameId = null;
   let ctx = null;
+  let arilImage = null;
+
+  // Carga la imagen del aril
+  const loadArilImage = () => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = "/images/arilo.png";
+      img.onload = () => resolve(img);
+    });
+  };
 
   class Particle {
     constructor({ x, y, radius = 10 }) {
@@ -33,27 +42,23 @@
       this.pushFactor = random.range(0.003, 0.005);
       this.pullFactor = random.range(0.002, 0.006);
       this.dampFactor = random.range(0.9, 0.95);
-      this.stabilityFactor = 0.000002; // Casi sin movimiento aleatorio
-
+      this.stabilityFactor = 0.000002;
       this.minVelocityThreshold = 0.005;
 
-      this.baseHue = random.range(0, 5); // Rojo más brillante
-      this.baseSaturation = random.range(90, 100);
-      this.baseLightness = random.range(55, 65);
-      this.timeOffset = random.range(0, Math.PI * 2);
+      // Escala aleatoria para variedad visual
+      this.scale = random.range(0.8, 1.2);
     }
 
     update() {
+      // [El código de update permanece igual]
       let dx, dy, dd, distDelta;
 
-      // Fuerza que atrae hacia la posición inicial
       dx = this.ix - this.x;
       dy = this.iy - this.y;
 
       this.ax = dx * this.pullFactor;
       this.ay = dy * this.pullFactor;
 
-      // Fuerza que repele del cursor
       dx = this.x - cursor.value.x;
       dy = this.y - cursor.value.y;
       dd = Math.sqrt(dx * dx + dy * dy);
@@ -65,19 +70,16 @@
         this.ay += (dy / dd) * distDelta * this.pushFactor;
       }
 
-      // Movimiento aleatorio suave
       const time = performance.now() * 0.001;
-      this.ax += Math.sin(time + this.timeOffset) * this.stabilityFactor;
-      this.ay += Math.cos(time + this.timeOffset) * this.stabilityFactor;
+      this.ax += Math.sin(time + this.rotation) * this.stabilityFactor;
+      this.ay += Math.cos(time + this.rotation) * this.stabilityFactor;
 
-      // Actualiza velocidad y aplica fricción
       this.vx += this.ax;
       this.vy += this.ay;
 
       this.vx *= this.dampFactor;
       this.vy *= this.dampFactor;
 
-      // Detiene el movimiento si es muy lento
       if (
         Math.abs(this.vx) < this.minVelocityThreshold &&
         Math.abs(this.vy) < this.minVelocityThreshold
@@ -86,11 +88,10 @@
         this.vy = 0;
       }
 
-      // Actualiza posición
       this.x += this.vx;
       this.y += this.vy;
 
-      // Obtener dimensiones del canvas
+      // Límites del canvas
       const canvas = document.querySelector("canvas");
       const bounds = {
         left: this.radius,
@@ -99,16 +100,14 @@
         bottom: canvas.height - this.radius,
       };
 
-      // Rebote en los bordes horizontales
       if (this.x < bounds.left) {
         this.x = bounds.left;
-        this.vx *= -0.7; // Rebote con pérdida de energía
+        this.vx *= -0.7;
       } else if (this.x > bounds.right) {
         this.x = bounds.right;
         this.vx *= -0.7;
       }
 
-      // Rebote en los bordes verticales
       if (this.y < bounds.top) {
         this.y = bounds.top;
         this.vy *= -0.7;
@@ -117,106 +116,35 @@
         this.vy *= -0.7;
       }
 
-      const maxOffset = 50;
-      if (Math.abs(this.y - this.iy) > maxOffset) {
-        const direction = this.y > this.iy ? 1 : -1;
-        this.y = this.iy + maxOffset * direction;
-        this.vy *= -0.5;
-      }
-
       this.rotation += this.vx * 0.05;
     }
 
     draw(context) {
+      if (!arilImage) return;
+
       context.save();
       context.translate(this.x, this.y);
       context.rotate(this.rotation);
 
-      // Color base más profundo con variaciones sutiles
-      const hue = 350 + random.range(-5, 5);
-      const mainColor = `hsla(${hue}, 95%, 45%, 0.95)`;
-      const highlightColor = `hsla(${hue}, 90%, 65%, 0.95)`;
-      const shadowColor = `hsla(${hue}, 95%, 35%, 0.95)`;
+      // Calcula dimensiones para mantener la proporción de la imagen
+      const width = this.radius * 2 * this.scale;
+      const height = width * (arilImage.height / arilImage.width);
 
-      context.beginPath();
-
-      // Forma más orgánica para los arilos
-      const numPoints = 6; // Menos puntos para forma más definida
-      const angleOffset = this.timeOffset;
-
-      // Primera capa: forma base
-      for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * Math.PI * 2 + angleOffset;
-        const radiusVariation = 1 + Math.sin(angle * 3 + this.timeOffset) * 0.2;
-        const currentRadius = this.radius * radiusVariation;
-
-        const x = Math.cos(angle) * currentRadius;
-        const y = Math.sin(angle) * currentRadius;
-
-        if (i === 0) {
-          context.moveTo(x, y);
-        } else {
-          // Usando curvas bezier para forma más orgánica
-          const prevAngle = ((i - 1) / numPoints) * Math.PI * 2 + angleOffset;
-          const cpRadius = this.radius * 1.3;
-          const cp1x = Math.cos(prevAngle + 0.5) * cpRadius;
-          const cp1y = Math.sin(prevAngle + 0.5) * cpRadius;
-          const cp2x = Math.cos(angle - 0.5) * cpRadius;
-          const cp2y = Math.sin(angle - 0.5) * cpRadius;
-          context.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
-        }
-      }
-
-      context.closePath();
-
-      // Sombra sutil
-      context.shadowColor = shadowColor;
-      context.shadowBlur = 5;
-      context.shadowOffsetX = 2;
-      context.shadowOffsetY = 2;
-
-      // Color base
-      context.fillStyle = mainColor;
-      context.fill();
-
-      // Brillo principal
-      const gradient = context.createRadialGradient(
-        -this.radius * 0.2,
-        -this.radius * 0.2,
-        0,
-        0,
-        0,
-        this.radius * 1.2
-      );
-      gradient.addColorStop(0, highlightColor);
-      gradient.addColorStop(0.5, "transparent");
-      gradient.addColorStop(1, shadowColor);
-
-      context.shadowColor = "transparent";
-      context.fillStyle = gradient;
-      context.fill();
-
-      // Brillo adicional para efecto cristalino
-      context.beginPath();
-      context.arc(
-        -this.radius * 0.2,
-        -this.radius * 0.2,
-        this.radius * 0.3,
-        0,
-        Math.PI * 2
-      );
-      context.fillStyle = `hsla(${hue}, 90%, 75%, 0.2)`;
-      context.fill();
+      // Dibuja la imagen centrada
+      context.drawImage(arilImage, -width / 2, -height / 2, width, height);
 
       context.restore();
     }
   }
 
-  const initCanvas = () => {
+  const initCanvas = async () => {
     if (!canvas.value || !canvasContainer.value) return;
 
     const canvasEl = canvas.value;
     ctx = canvasEl.getContext("2d");
+
+    // Carga la imagen antes de inicializar
+    arilImage = await loadArilImage();
 
     const resize = () => {
       if (!canvasContainer.value) return;
@@ -317,8 +245,8 @@
   };
 
   onMounted(() => {
-    nextTick(() => {
-      const cleanup = initCanvas();
+    nextTick(async () => {
+      const cleanup = await initCanvas();
       if (canvas.value) {
         canvas.value.addEventListener("mousemove", onMouseMove);
         canvas.value.addEventListener("mouseleave", onMouseLeave);
