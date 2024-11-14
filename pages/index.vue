@@ -1,10 +1,10 @@
 <template>
   <section>
-    <NuxtImg src="/images/hero.png" />
+    <NuxtImg src="/images/hero.png" alt="hero" />
     <div class="particle-wrapper">
       <PomegranateParticles />
     </div>
-    <NuxtImg src="/images/lower.png" />
+    <NuxtImg src="/images/lower.png" alt="lower" />
   </section>
 </template>
 
