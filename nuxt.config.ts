@@ -4,4 +4,17 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ["~/assets/main.css"],
   modules: ['@nuxt/image'],
+  app: {
+    head: {
+      link: [
+        {
+          rel: 'stylesheet',
+          href: 'https://unpkg.com/primeflex@latest/primeflex.css'
+        },
+      ],
+    }
+  },
+  build: {
+    transpile: ['three']
+  }
 })
