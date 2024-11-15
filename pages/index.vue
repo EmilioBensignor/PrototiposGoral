@@ -4,7 +4,7 @@
       <div class="particle-wrapper">
         <PomegranateParticles />
       </div>
-      <PomegranateViewer />
+      <PomegranateViewer1 />
     </section>
     <!-- <section class="desktop">
       <NuxtImg src="/images/heroDesktop.png" alt="hero" />
